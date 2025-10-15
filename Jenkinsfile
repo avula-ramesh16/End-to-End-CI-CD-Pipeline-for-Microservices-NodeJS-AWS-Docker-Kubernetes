@@ -3,29 +3,39 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = '787068570726'   // 👈 Replace with your AWS Account ID
         ECR_USERS = 'users'
         ECR_PRODUCTS = 'products'
         CLUSTER_NAME = 'demo-cluster'
         NAMESPACE = 'demo'
-        AWS_ACCOUNT_ID = ''
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/<your-username>/ci-cd-microservices-jenkins.git'
+                git branch: 'main', url: 'https://github.com/avula-ramesh16/End-to-End-CI-CD-Pipeline-for-Microservices-NodeJS-AWS-Docker-Kubernetes.git'
             }
         }
 
-        stage('Setup AWS') {
+        stage('Create ECR Repositories if not exists') {
             steps {
-                script {
-                    sh '''
-                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                    echo "AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID" >> env.properties
-                    '''
-                    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-                }
+                sh """
+                # Check and create 'users' repo if not exists
+                if ! aws ecr describe-repositories --repository-names ${ECR_USERS} --region ${AWS_REGION} >/dev/null 2>&1; then
+                  echo "ECR repository '${ECR_USERS}' does not exist. Creating..."
+                  aws ecr create-repository --repository-name ${ECR_USERS} --region ${AWS_REGION}
+                else
+                  echo "ECR repository '${ECR_USERS}' already exists."
+                fi
+
+                # Check and create 'products' repo if not exists
+                if ! aws ecr describe-repositories --repository-names ${ECR_PRODUCTS} --region ${AWS_REGION} >/dev/null 2>&1; then
+                  echo "ECR repository '${ECR_PRODUCTS}' does not exist. Creating..."
+                  aws ecr create-repository --repository-name ${ECR_PRODUCTS} --region ${AWS_REGION}
+                else
+                  echo "ECR repository '${ECR_PRODUCTS}' already exists."
+                fi
+                """
             }
         }
 
